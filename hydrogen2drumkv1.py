@@ -3,7 +3,7 @@
 # ## hydrogen2drumkv1.py ##
 # Convert Hydrogen 2 drumkits to drumkv1.
 # Usage: hydrogen2drumkv1.py uncompressed_hydrogen_drumkit.xml output.drumkv1
-# Source code:
+# Homepage: https://github.com/TuriSc/hydrogen2drumkv1.py
 # Author: Turi Scandurra
 
 import sys
