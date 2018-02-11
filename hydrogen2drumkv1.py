@@ -1,23 +1,25 @@
 #!/usr/bin/env python3
 
-# ## hydrogen2drumkv1.py ##
+# ## hydrogen2drumkv1.py - v.1.1 ##
 # Convert Hydrogen 2 drumkits to drumkv1.
 # Usage: hydrogen2drumkv1.py uncompressed_hydrogen_drumkit.xml output.drumkv1
 # Homepage: https://github.com/TuriSc/hydrogen2drumkv1.py
 # Author: Turi Scandurra
 
-import sys
 import os
+import sys
 import xml.etree.ElementTree as ET
 from xml.etree.ElementTree import Element, SubElement, Comment, tostring
 
 # argument parsing
 if len(sys.argv) != 3:
+    #TODO
     sys.exit(
         'Usage: %s uncompressed_hydrogen_drumkit.xml '
         'output.drumkv1' % sys.argv[0])
 
 if not os.path.exists(sys.argv[1]):
+    #TODO
     sys.exit('ERROR: File %s not found' % sys.argv[1])
 
 
@@ -60,11 +62,13 @@ for elem in input_xml.getiterator():
 
 # throw error on malformed xml
 if 'drumkit_info' not in input_xml.tag:
-    sys.exit('ERROR: File %s not a valid Hydrogen drumkit' % sys.argv[1])
+    print('ERROR: File %s not a valid Hydrogen drumkit' % sys.argv[1])
+    sys.exit(1)
 
 inst_list = input_xml.find('instrumentList')
 if inst_list is None:
-    sys.exit('ERROR: File %s not a valid Hydrogen drumkit' % sys.argv[1])
+    print('ERROR: File %s not a valid Hydrogen drumkit' % sys.argv[1])
+    sys.exit(1)
 
 preset_name = input_xml.findtext('name')
 preset_author = input_xml.findtext('author')
@@ -94,12 +98,12 @@ for instrument in inst_list.findall('instrument'):
     inst_filename = instrument.find('filename')
     if inst_filename is None:
         # check if instrument is multilayered
-        layer = instrument.find('layer')
-        if layer is not None:
-            layer_filename = layer.find('filename')
+        layer = instrument.findall('layer')
+        if layer:
+            layer_filename = layer[len(layer)-1].find('filename')
             if layer_filename is not None:
                 sample.text = layer_filename.text
-                sample_pitch = layer.find('pitch')
+                sample_pitch = layer[len(layer)-1].find('pitch')
     else:
         sample.text = inst_filename.text
     # param_0 GEN1_SAMPLE
@@ -198,3 +202,4 @@ try:
         f.write(ET.tostring(root).decode("utf-8"))
 except IOError, e:
     print 'ERROR:', e[0], e[1]
+    sys.exit(1)
