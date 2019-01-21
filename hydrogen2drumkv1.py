@@ -1,38 +1,35 @@
 #!/usr/bin/env python3
 
-# ## hydrogen2drumkv1.py - v.1.2 ##
+# ## hydrogen2drumkv1.py - v.1.3 ##
 # Convert Hydrogen 2 drumkits to drumkv1.
-# Homepage: https://github.com/TuriSc/hydrogen2drumkv1.py
-# Author: Turi Scandurra
+# Inspired by https://github.com/TuriSc/hydrogen2drumkv1.py
 
 import os
 import sys
 import argparse
+import tarfile
 import xml.etree.ElementTree as ET
 from xml.etree.ElementTree import Element, SubElement, Comment, tostring
 
 
-def main():
-    # argument parsing
-    parser = argparse.ArgumentParser()
-    parser.add_argument("infile", help="path to source xml")
-    parser.add_argument("outfile", help="path to output drumkv1")
-    parser.add_argument('-p', "--prefix", help="prefix to sample path")
-    parser.add_argument('-n', "--note",
-                        help="starting midi note (default: 35)", type=int)
-    parser.add_argument("-nv", "--nonverbose", help="nonverbose output",
-                        action="store_true")
-    global args
-    args = parser.parse_args()
+# argument parsing
+parser = argparse.ArgumentParser()
+parser.add_argument("source_dir", help="directory containing .h2drumkit files")
+parser.add_argument("dest_dir", help="directory used to write drumkv1 data")
+parser.add_argument('-n', "--note",
+                    help="starting midi note (default: 35)", type=int)
+parser.add_argument("-nv", "--nonverbose", help="nonverbose output",
+                    action="store_true")
+global args
+args = parser.parse_args()
 
-    if not os.path.exists(args.infile):
-        sys.exit('ERROR: File %s not found' % args.infile)
+def untar(fname, dest_path):
+    tar = tarfile.open(fname)
+    tar.extractall(path=dest_path)
+    tar.close()
 
-    # read source file
-    if not args.nonverbose:
-        print('Input file: ' + args.infile)
-    input_xml = ET.parse(args.infile).getroot()
-
+def convert_xml(fname):
+    input_xml = ET.parse(fname).getroot()
     # strip namespace if present
     namespace = '{http://www.hydrogen-music.org/drumkit}'
     nsl = len(namespace)
@@ -42,13 +39,12 @@ def main():
 
     # throw error on malformed xml
     if 'drumkit_info' not in input_xml.tag:
-        print('ERROR: File %s not a valid Hydrogen drumkit' % args.infile)
+        print('ERROR: File %s not a valid Hydrogen drumkit' % fname)
         sys.exit(1)
 
-    global inst_list
     inst_list = input_xml.find('instrumentList')
     if inst_list is None:
-        print('ERROR: File %s not a valid Hydrogen drumkit' % args.infile)
+        print('ERROR: File %s not a valid Hydrogen drumkit' % fname)
         sys.exit(1)
 
     preset_name = input_xml.findtext('name')
@@ -58,6 +54,7 @@ def main():
 
     if preset_name is None:
         preset_name = 'Untitled'
+
     global root
     root = ET.Element('preset', name=preset_name)
     if not args.nonverbose:
@@ -76,11 +73,6 @@ def main():
         if not args.nonverbose:
             print('Hydrogen preset license: ' + preset_license)
     elements = ET.SubElement(root, 'elements')
-
-    if args.prefix:
-        sample_prefix = args.prefix
-    else:
-        sample_prefix = ''
 
     if args.note:
         index = args.note
@@ -102,13 +94,13 @@ def main():
             if layer:
                 layer_filename = layer[len(layer)-1].find('filename')
                 if layer_filename is not None:
-                    sample.text = sample_prefix + layer_filename.text
+                    sample.text = layer_filename.text
                     sample_pitch = layer[len(layer)-1].find('pitch')
                     if not args.nonverbose:
                         print('Note ' + str(index) +
                               ': ' + layer_filename.text)
         else:
-            sample.text = sample_prefix + inst_filename.text
+            sample.text = inst_filename.text
             if not args.nonverbose:
                 print('Note ' + str(index) + ': ' + inst_filename.text)
         # param_0 GEN1_SAMPLE
@@ -204,45 +196,34 @@ def main():
         preset_params, 'param', name='DEF1_VELOCITY', index='42')
     param_42.text = '1'
 
-
-# write file
-def write_file():
-    # append the correct extension if missing
-    if args.outfile.find('.drumkv1') == -1:
-        output_file = args.outfile + '.drumkv1'
-    else:
-        output_file = args.outfile
-    try:
-        with open(output_file, 'w') as f:
-            f.write('<!DOCTYPE drumkv1>')
-            f.write(ET.tostring(root).decode("utf-8"))
-            if not args.nonverbose:
-                print('File saved: ' + output_file)
-    except (IOError, FileNotFoundError) as e:
-        print('Error writing file:' + str(e))
-        sys.exit(1)
-
-
 # conversion function
 def scale(value, to_min, to_max, from_min, from_max):
     return (to_max-to_min)*(value-from_min)/(from_max-from_min) + to_min
 
+def write_file(fname):
+    try:
+        with open(fname, 'w') as f:
+            f.write('<!DOCTYPE drumkv1>')
+            f.write(ET.tostring(root).decode("utf-8"))
+            if not args.nonverbose:
+                print('File saved: ' + fname)
+    except (IOError, FileNotFoundError) as e:
+        print('Error writing file:' + str(e))
+        sys.exit(1)
 
-# add newlines and indentation
-def pretty_print(elem, level=0):
-    i = "\n" + level*"  "
-    if len(elem):
-        if not elem.text or not elem.text.strip():
-            elem.text = i + "  "
-        if not elem.tail or not elem.tail.strip():
-            elem.tail = i
-        for elem in elem:
-            pretty_print(elem, level+1)
-        if not elem.tail or not elem.tail.strip():
-            elem.tail = i
-    else:
-        if level and (not elem.tail or not elem.tail.strip()):
-            elem.tail = i
-main()
-pretty_print(root)
-write_file()
+for dirpath, dirnames, files in os.walk(args.source_dir):
+    for name in files:
+        if name.lower().endswith('.h2drumkit'):
+            tarball = os.path.join(dirpath, name)
+            untar(tarball, args.dest_dir)
+            print("Extracted " + name)
+
+for dirpath, dirnames, files in os.walk(args.dest_dir):
+    for name in files:
+        if name.lower().endswith('.xml'):
+            hydrogen_xml = os.path.join(dirpath, name)
+            convert_xml(hydrogen_xml)
+            drumkv1_kit = (os.path.basename(dirpath))
+            drumkv1_file = os.path.join(dirpath, drumkv1_kit + '.drumkv1')
+            write_file(drumkv1_file)
+
