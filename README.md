@@ -13,7 +13,7 @@ Many thanks goes to the following sites for making the kits available:
  - https://sourceforge.net/projects/hydrogen/files/Sound%20Libraries/Main%20sound%20libraries/
  - https://freewavesamples.com/hydrogen-drum-kits
 
-All of the above kits (and more) can be obtained via http://mtf8.info/hydroygen-kits.tar.gz. This collection is slightly improved as directory names have been cleaned up (to be easier on the eyes) and file permissions have been fixed in order to avoid errors when clobbering (like when re-running this script).
+All of the above kits (and more) can be obtained via http://mtf8.info/hydrogen-kits.tar.gz. This collection is slightly improved as directory names have been cleaned up (to be easier on the eyes) and file permissions have been fixed in order to avoid errors when clobbering (like when re-running this script).
 
 So onto the work-flow...
 
